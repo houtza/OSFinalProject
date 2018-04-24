@@ -21,21 +21,23 @@
 
 #define MAX_CMD 80
 
-uint16_t BPB_BytesPerSec;
-uint8_t BPB_SecPerClus;
-uint16_t BPB_RsvdsSecCnt;
-uint8_t BPB_NumFATs;
-uint16_t BPB_RootEntCnt;
-uint32_t BPB_FATSz32;
-uint32_t BPB_RootClus; 
+uint16_t BPB_BytesPerSec=0;
+uint8_t BPB_SecPerClus=0;
+uint16_t BPB_RsvdsSecCnt=0;
+uint8_t BPB_NumFATs=0;
+uint16_t BPB_RootEntCnt=0;
+uint32_t BPB_FATSz32=0;
+uint32_t BPB_RootClus=0;
+uint32_t rootDirAddress=0; 
 
 
 uint32_t RootDirSectors();//Find the root directory sector
-uint32_t FirstDataSectors();//Find first data sector
+uint32_t FirstDataSectors();//Find first data sectorsudo apt-get update
 uint32_t FirstSectorOfCluster();//Find the first sector of cluster
+void CalcRootDir();//Calculates the starting value of the root directory
 uint16_t GetBPBInfo(int fd, int byteOffset, int byteSize);//Used to access the BPB sector of memory and return the contents at the specified offset.
                                                              //Takes in the file handle, byte offset and how many bytes you want to read (1 or 2) and returns the number.
-
+void PrintLs(int fd,uint32_t startAddress);
 
 /* This is the main function of your project, and it will be run
  * first before all other functions.
@@ -120,6 +122,9 @@ int main(int argc, char *argv[])
 		  printf("BPB_NumFATs is 0x%x, decimal: %i\n", BPB_NumFATs, BPB_NumFATs);
 		 
 	          printf("BPB_FATSz32 is 0x%x, decimal: %i\n", BPB_FATSz32, BPB_FATSz32);
+		  CalcRootDir();
+                  printf("The root address is 0x%x, decimal: %i\n",  rootDirAddress,rootDirAddress);
+                  
 
 		  //printf("BPB_RootClus is 0x%x, decimal: %i\n", BPB_RootClus, BPB_RootClus);
 
@@ -139,6 +144,7 @@ int main(int argc, char *argv[])
 		}
 
 		else if(strncmp(cmd_line,"ls",2)==0) {
+			PrintLs(fd,rootDirAddress);
 			printf("Going to ls.\n");
 		}
 
@@ -224,9 +230,52 @@ uint32_t FirstDataSector(){
 
 }
 
+//Calculates the root address by first calculating the first sector of cluster and then multpliess it by 512. 
+void CalcRootDir(){
+  rootDirAddress=512*((( BPB_RootClus-2)* BPB_SecPerClus) +FirstDataSector());
+}
+
+
 //Calculates the first sector of cluster and then multpliess it by 512 to print out the starting address of the root directory. 
 uint32_t FirstSectorOfCluster(){
   uint32_t firstSectorOfCluster=(( BPB_RootClus-2)* BPB_SecPerClus) +FirstDataSector();
   printf("The root address is 0x%x, decimal: %i\n",  firstSectorOfCluster*512,  firstSectorOfCluster*512);
   return firstSectorOfCluster;
 }
+
+
+
+void PrintLs(int fd,uint32_t startAddress){
+	int loopFlag=1;
+	uint8_t enteryType=0;
+	uint16_t nameVar=0;
+	//hile(loopFlag){
+
+		lseek(fd, startAddress+11, SEEK_SET);
+		read(fd,&enteryType,sizeof(enteryType));
+
+		if(enteryType==0xF){
+			startAddress=startAddress+32;
+			printf("test1\n");
+		}
+
+		else if(enteryType==0x20){
+			lseek(fd, startAddress, SEEK_SET);
+			read(fd,&nameVar,11);
+			printf("test2\n");
+			printf("%s",nameVar);
+
+		}
+	//}
+
+
+
+
+}
+
+
+
+
+
+
+

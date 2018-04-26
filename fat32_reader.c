@@ -37,7 +37,8 @@ uint32_t FirstSectorOfCluster();//Find the first sector of cluster
 void CalcRootDir();//Calculates the starting value of the root directory
 uint16_t GetBPBInfo(int fd, int byteOffset, int byteSize);//Used to access the BPB sector of memory and return the contents at the specified offset.
                                                              //Takes in the file handle, byte offset and how many bytes you want to read (1 or 2) and returns the number.
-void PrintLs(int fd,uint32_t startAddress);
+uint32_t ThisFATSecNum(uint32_t N);
+uint32_t ThisFATEntOffset(uint32_t N);
 
 /* This is the main function of your project, and it will be run
  * first before all other functions.
@@ -100,7 +101,8 @@ int main(int argc, char *argv[])
 	  BPB_RootClus  = (GetBPBInfo(fd,44,2) <<16) | GetBPBInfo(fd,46,2);
 	}
 
-    CalcRootDir();
+    CalcRootDir();  //Calculate the root directory address.
+
 	/* Main loop.  You probably want to create a helper function
        for each command besides quit. */
 
@@ -121,14 +123,15 @@ int main(int argc, char *argv[])
 
 		  printf("BPB_NumFATs is 0x%x, decimal: %i\n", BPB_NumFATs, BPB_NumFATs);
 		 
-	          printf("BPB_FATSz32 is 0x%x, decimal: %i\n", BPB_FATSz32, BPB_FATSz32);
-		  //CalcRootDir();
-                  printf("The root address is 0x%x, decimal: %i\n",  rootDirAddress,rootDirAddress);
+	      printf("BPB_FATSz32 is 0x%x, decimal: %i\n", BPB_FATSz32, BPB_FATSz32);
+		  
+          printf("The root address is 0x%x, decimal: %i\n",  rootDirAddress,rootDirAddress);
                   
 
 		  //printf("BPB_RootClus is 0x%x, decimal: %i\n", BPB_RootClus, BPB_RootClus);
 
-		  FirstSectorOfCluster();
+		  FirstSectorOfCluster(2);
+		  printf("The FAT address is 0x%x",  (ThisFATSecNum(2)+ThisFATEntOffset(2)));
 		}
 
 		else if(strncmp(cmd_line,"volume",6)==0) {
@@ -303,14 +306,18 @@ void CalcRootDir(){
 //Calculates the first sector of cluster and then multpliess it by 512 to print out the starting address of the root directory. 
 uint32_t FirstSectorOfCluster(uint32_t n){
   uint32_t firstSectorOfCluster=(( n-2)* BPB_SecPerClus) +FirstDataSector();
-  printf("The root address is 0x%x, decimal: %i\n",  firstSectorOfCluster*512,  firstSectorOfCluster*512);
-  return firstSectorOfCluster ;
+  printf("The address is 0x%x, decimal: %i\n",  firstSectorOfCluster*512,  firstSectorOfCluster*512);
+  return firstSectorOfCluster;
 }
 
 
+uint32_t ThisFATSecNum(uint32_t N){
+	return (BPB_RsvdsSecCnt + (N%BPB_BytesPerSec));
+}
 
-
-
+uint32_t ThisFATEntOffset(uint32_t N){
+	return (N % BPB_BytesPerSec);
+}
 
 
 

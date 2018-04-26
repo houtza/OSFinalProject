@@ -131,8 +131,8 @@ int main(int argc, char *argv[])
 
 		  //printf("BPB_RootClus is 0x%x, decimal: %i\n", BPB_RootClus, BPB_RootClus);
 
-		  FirstSectorOfCluster(2);
-		  printf("The FAT address is 0x%x",  ((ThisFATSecNum(2)*512)+ThisFATEntOffset(2)));
+		  FirstSectorOfCluster(94);
+		  printf("The FAT address is 0x%x",  ((ThisFATSecNum(94)*512)+ThisFATEntOffset(94)));
 		}
 
 		else if(strncmp(cmd_line,"volume",6)==0) {
@@ -164,6 +164,9 @@ int main(int argc, char *argv[])
 		}
 
 		else if(strncmp(cmd_line,"cd",2)==0) {
+			//char directoryName
+
+
 
 			printf("Going to cd!\n");
 		}
@@ -174,10 +177,12 @@ int main(int argc, char *argv[])
 			uint8_t lsName=0;
 			int charCounter=0;
 			uint32_t dirAddress=0;
+
 			uint32_t nextCluster=currentCluster;
+			uint32_t nextClusterFATaddress=0;
 
 			
-			while(nextCluster!=0xFFFFFFF){
+			while(nextCluster<0xF8FF0F){
 
 
 				dirAddress= FirstSectorOfCluster(nextCluster)*512;
@@ -243,7 +248,11 @@ int main(int argc, char *argv[])
 
 				//lseek(fd, startAddress, SEEK_SET);
 			    //read(fd,&volumeName,sizeof(enteryType));
-			    nextCluster=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2))
+			    nextClusterFATaddress=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2));
+			    lseek(fd, nextClusterFATaddress, SEEK_SET);
+				read(fd,&nextCluster,4);
+
+			    //nextCluster=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2));
 			}
 
 
@@ -354,8 +363,4 @@ uint32_t ThisFATSecNum(uint32_t N){
 uint32_t ThisFATEntOffset(uint32_t N){
 	return ((N*4)% BPB_BytesPerSec);
 }
-
-
-
-
 

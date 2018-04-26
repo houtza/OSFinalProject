@@ -29,7 +29,7 @@ uint16_t BPB_RootEntCnt=0;
 uint32_t BPB_FATSz32=0;
 uint32_t BPB_RootClus=0;
 uint32_t rootDirAddress=0; 
-
+uint32_t currentCluster=0;
 
 uint32_t RootDirSectors();//Find the root directory sector
 uint32_t FirstDataSectors();//Find first data sectorsudo apt-get update
@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
 	BPB_RsvdsSecCnt=GetBPBInfo(fd,14,2);
 
 	BPB_RootClus=GetBPBInfo(fd,44,2);
+	currentCluster=BPB_RootClus;
 
 	//GetBPBInfo can return 2 bytes at most, so we must use bit shifting to get and store 4 bytes if we want to use the funtion..
 	if(littleEndian==1){
@@ -131,7 +132,7 @@ int main(int argc, char *argv[])
 		  //printf("BPB_RootClus is 0x%x, decimal: %i\n", BPB_RootClus, BPB_RootClus);
 
 		  FirstSectorOfCluster(2);
-		  printf("The FAT address is 0x%x",  (ThisFATSecNum(2)+ThisFATEntOffset(2)));
+		  printf("The FAT address is 0x%x",  ((ThisFATSecNum(2)*512)+ThisFATEntOffset(2)));
 		}
 
 		else if(strncmp(cmd_line,"volume",6)==0) {
@@ -172,43 +173,78 @@ int main(int argc, char *argv[])
 			uint8_t stopByte=1;
 			uint8_t lsName=0;
 			int charCounter=0;
-			uint32_t dirAddress=rootDirAddress;
+			uint32_t dirAddress=0;
+			uint32_t nextCluster=currentCluster;
 
-			lseek(fd, dirAddress, SEEK_SET);
-			read(fd,&stopByte,1);
-			while(stopByte!=0){
-				lseek(fd, dirAddress+11, SEEK_SET);
-				read(fd,&statByte,1);
-				if(statByte==0x08){
-					dirAddress=dirAddress+32;
-				}
+			
+			while(nextCluster!=0xFFFFFFF){
 
 
-				else if(statByte==0x0F){
-					dirAddress=dirAddress+32;
-				}
-
-				else if(statByte==0x10 || statByte==0x20){
-					while(charCounter!=11){
-						lseek(fd, dirAddress+charCounter, SEEK_SET);
-						read(fd,&lsName,1);
-
- 						charCounter++;
- 						printf("%c",lsName);
-					}
-					printf("\n");
-					charCounter=0;
-					dirAddress=dirAddress+32;
-				}
+				dirAddress= FirstSectorOfCluster(nextCluster)*512;
 
 				lseek(fd, dirAddress, SEEK_SET);
 				read(fd,&stopByte,1);
-			}
-			//uint16_t volumeName;
-			//PrintLs(fd,rootDirAddress);
+				while(stopByte!=0){
+					lseek(fd, dirAddress+11, SEEK_SET);
+					read(fd,&statByte,1);
+					if(statByte==0x08){
+						dirAddress=dirAddress+32;
+					}
 
-			//lseek(fd, startAddress, SEEK_SET);
-		    //read(fd,&volumeName,sizeof(enteryType));
+
+					else if(statByte==0x0F){
+						dirAddress=dirAddress+32;
+					}
+
+					else if(statByte==0x10){
+						while(charCounter!=11){
+							
+							lseek(fd, dirAddress+charCounter, SEEK_SET);
+							read(fd,&lsName,1);
+
+	 						charCounter++;
+	 						if(lsName!=0x20){
+	 							printf("%c",lsName);
+	 						}
+	 						
+						}
+						printf("\n");
+						charCounter=0;
+						dirAddress=dirAddress+32;
+					}
+
+					else if(statByte==0x20){
+						while(charCounter!=11){
+							if(charCounter==8){
+								printf(".");
+							}
+							lseek(fd, dirAddress+charCounter, SEEK_SET);
+							read(fd,&lsName,1);
+
+	 						charCounter++;
+	 						if(lsName!=0x20){
+	 							printf("%c",lsName);
+	 						}
+	 						
+						}
+						printf("\n");
+						charCounter=0;
+						dirAddress=dirAddress+32;
+					}
+
+
+
+
+					lseek(fd, dirAddress, SEEK_SET);
+					read(fd,&stopByte,1);
+				}
+				//uint16_t volumeName;
+				//PrintLs(fd,rootDirAddress);
+
+				//lseek(fd, startAddress, SEEK_SET);
+			    //read(fd,&volumeName,sizeof(enteryType));
+			    nextCluster=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2))
+			}
 
 
 
@@ -312,11 +348,11 @@ uint32_t FirstSectorOfCluster(uint32_t n){
 
 
 uint32_t ThisFATSecNum(uint32_t N){
-	return (BPB_RsvdsSecCnt + (N%BPB_BytesPerSec));
+	return (BPB_RsvdsSecCnt + ((N*4)/BPB_BytesPerSec));
 }
 
 uint32_t ThisFATEntOffset(uint32_t N){
-	return (N % BPB_BytesPerSec);
+	return ((N*4)% BPB_BytesPerSec);
 }
 
 

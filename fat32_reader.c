@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 	  BPB_RootClus  = (GetBPBInfo(fd,44,2) <<16) | GetBPBInfo(fd,46,2);
 	}
 
-
+    CalcRootDir();
 	/* Main loop.  You probably want to create a helper function
        for each command besides quit. */
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 		  printf("BPB_NumFATs is 0x%x, decimal: %i\n", BPB_NumFATs, BPB_NumFATs);
 		 
 	          printf("BPB_FATSz32 is 0x%x, decimal: %i\n", BPB_FATSz32, BPB_FATSz32);
-		  CalcRootDir();
+		  //CalcRootDir();
                   printf("The root address is 0x%x, decimal: %i\n",  rootDirAddress,rootDirAddress);
                   
 
@@ -133,6 +133,26 @@ int main(int argc, char *argv[])
 
 		else if(strncmp(cmd_line,"volume",6)==0) {
 			printf("Going to run volume!\n");
+            int volumeCounter=0;
+            uint8_t volumeName=0;
+			while(volumeCounter!=11){
+				lseek(fd, rootDirAddress+volumeCounter, SEEK_SET);
+				read(fd,&volumeName,1);
+
+ 				volumeCounter++;
+ 				printf("%c\n",volumeName );
+			}
+
+			//uint64_t volumeName=0;
+
+			//lseek(fd, rootDirAddress, SEEK_SET);
+		    //read(fd,&volumeName,11);
+		    //volumeName<<32;
+		    //lseek(fd, rootDirAddress+4, SEEK_SET);
+		    //read(fd,&volumeName,4);
+
+		    //printf("The volume address is 0x%x", volumeName);
+		    //printf("%x",volumeName );
 		}
 		
 		else if(strncmp(cmd_line,"stat",4)==0) {
@@ -140,11 +160,55 @@ int main(int argc, char *argv[])
 		}
 
 		else if(strncmp(cmd_line,"cd",2)==0) {
+
 			printf("Going to cd!\n");
 		}
 
 		else if(strncmp(cmd_line,"ls",2)==0) {
-			PrintLs(fd,rootDirAddress);
+			uint8_t statByte=1;
+			uint8_t stopByte=1;
+			uint8_t lsName=0;
+			int charCounter=0;
+			uint32_t dirAddress=rootDirAddress;
+
+			lseek(fd, dirAddress, SEEK_SET);
+			read(fd,&stopByte,1);
+			while(stopByte!=0){
+				lseek(fd, dirAddress+11, SEEK_SET);
+				read(fd,&statByte,1);
+				if(statByte==0x08){
+					dirAddress=dirAddress+32;
+				}
+
+
+				else if(statByte==0x0F){
+					dirAddress=dirAddress+32;
+				}
+
+				else if(statByte==0x10 || statByte==0x20){
+					while(charCounter!=11){
+						lseek(fd, dirAddress+charCounter, SEEK_SET);
+						read(fd,&lsName,1);
+
+ 						charCounter++;
+ 						printf("%c",lsName);
+					}
+					printf("\n");
+					charCounter=0;
+					dirAddress=dirAddress+32;
+				}
+
+				lseek(fd, dirAddress, SEEK_SET);
+				read(fd,&stopByte,1);
+			}
+			//uint16_t volumeName;
+			//PrintLs(fd,rootDirAddress);
+
+			//lseek(fd, startAddress, SEEK_SET);
+		    //read(fd,&volumeName,sizeof(enteryType));
+
+
+
 			printf("Going to ls.\n");
 		}
 
@@ -237,41 +301,14 @@ void CalcRootDir(){
 
 
 //Calculates the first sector of cluster and then multpliess it by 512 to print out the starting address of the root directory. 
-uint32_t FirstSectorOfCluster(){
-  uint32_t firstSectorOfCluster=(( BPB_RootClus-2)* BPB_SecPerClus) +FirstDataSector();
+uint32_t FirstSectorOfCluster(uint32_t n){
+  uint32_t firstSectorOfCluster=(( n-2)* BPB_SecPerClus) +FirstDataSector();
   printf("The root address is 0x%x, decimal: %i\n",  firstSectorOfCluster*512,  firstSectorOfCluster*512);
-  return firstSectorOfCluster;
+  return firstSectorOfCluster ;
 }
 
 
 
-void PrintLs(int fd,uint32_t startAddress){
-	int loopFlag=1;
-	uint8_t enteryType=0;
-	uint16_t nameVar=0;
-	//hile(loopFlag){
-
-		lseek(fd, startAddress+11, SEEK_SET);
-		read(fd,&enteryType,sizeof(enteryType));
-
-		if(enteryType==0xF){
-			startAddress=startAddress+32;
-			printf("test1\n");
-		}
-
-		else if(enteryType==0x20){
-			lseek(fd, startAddress, SEEK_SET);
-			read(fd,&nameVar,11);
-			printf("test2\n");
-			printf("%s",nameVar);
-
-		}
-	//}
-
-
-
-
-}
 
 
 

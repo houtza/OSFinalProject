@@ -165,10 +165,15 @@ int main(int argc, char *argv[])
 
 		else if(strncmp(cmd_line,"cd",2)==0) {
 			//char directoryName
-
+			int strLength=0;
 			char *dirName;
 			dirName=cmd_line+3;
+			while(strcmp(dirName+strLength,"\0")!=0){
+				strLength++;
+			}
+			strLength--;
 			printf("%s\n",dirName);
+			printf("%d",strLength);
 
 			printf("Going to cd!\n");
 		}

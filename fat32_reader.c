@@ -1,7 +1,7 @@
 /***********************************************************
  * Name of program: fat32_reader.c
  * Authors: Aaron Houtz and Geoffrey Miller
- * Description: A basic program to interperate and display information from a FAT32 file system image.
+ * Description: A basic program to navigate and display information from a FAT32 file system image.
  **********************************************************/
 
 /* These are the included libraries.  You may need to add more. */
@@ -126,27 +126,20 @@ int main(int argc, char *argv[])
 		  printf("BPB_NumFATs is 0x%x, decimal: %i\n", BPB_NumFATs, BPB_NumFATs);
 		 
 	      printf("BPB_FATSz32 is 0x%x, decimal: %i\n", BPB_FATSz32, BPB_FATSz32);
+
+	      printf("The root directory address is at 0x%x\n",rootDirAddress);
 		  
-          printf("The root address is 0x%x, decimal: %i\n",  rootDirAddress,rootDirAddress);
-                  
-
-		  //printf("BPB_RootClus is 0x%x, decimal: %i\n", BPB_RootClus, BPB_RootClus);
-
-		  //FirstSectorOfCluster(94);
-		  //printf("The FAT address is 0x%x",  ((ThisFATSecNum(94)*512)+ThisFATEntOffset(94)));
+           
 		}
 
 		else if(strncmp(cmd_line,"volume",6)==0) {
-			printf("Going to run volume!\n");
-            int volumeCounter=0;
-            uint8_t volumeName=0;
-			while(volumeCounter!=11){
-				lseek(fd, rootDirAddress+volumeCounter, SEEK_SET);
-				read(fd,&volumeName,1);
-
- 				volumeCounter++;
- 				printf("%c\n",volumeName );
-			}			
+			
+			char volumeName[12] = {0};
+            
+            lseek(fd, rootDirAddress, SEEK_SET);
+			read(fd,&volumeName,11);//Get Volume name
+			remove_spaces(volumeName);
+			printf("%s\n",volumeName);
 		}
 		
 		else if(strncmp(cmd_line,"stat",4)==0) {
@@ -170,14 +163,13 @@ int main(int argc, char *argv[])
 			char lsName[12] = {0};
 
 			
-			while(nextCluster<0xFFFFFF8){
-
+			while(nextCluster<0xFFFFFF8){ //Loop while we have not reached the last cluster. 
 			
 				dirAddress= FirstSectorOfCluster(nextCluster)*512;
 
 				lseek(fd, dirAddress, SEEK_SET);
 				read(fd,&stopByte,1);
-				while(stopByte!=0){
+				while(stopByte!=0){ //Checks to see of we have reached the end of the enteries.
 					lseek(fd, dirAddress+11, SEEK_SET);
 					read(fd,&statByte,1);
 					if(statByte==0x08){
@@ -185,18 +177,18 @@ int main(int argc, char *argv[])
 					}
 
 
-					else if(statByte==0x0F){
+					else if(statByte==0x0F){//The entry is a volume
 						dirAddress=dirAddress+32;
 					}
 
-					else if(statByte==0x10){
+					else if(statByte==0x10){//The entry is a directory
 						uint32_t newCurrentCluster=0;
 						uint16_t tempLowClus=0;								
 						lseek(fd, dirAddress, SEEK_SET);
 						read(fd,&lsName,11);
 						remove_spaces(lsName);
 
-						if(strncmp(lsName,dirName,strLength)==0){
+						if(strncmp(lsName,dirName,strLength)==0){  //Checks to see if the entry name maches the entry we want.
 							foundFlag=1;
 							uint32_t DIR_FileSize=0;
 							uint32_t statClusterInfo=0;
@@ -218,7 +210,7 @@ int main(int argc, char *argv[])
 						dirAddress=dirAddress+32;
 					}
 
-					else if(statByte==0x20){
+					else if(statByte==0x20){//The entry is a file.
 						uint32_t newCurrentCluster=0;
 						uint16_t tempLowClus=0;	
 						
@@ -226,7 +218,7 @@ int main(int argc, char *argv[])
 						lseek(fd, dirAddress, SEEK_SET);
 						read(fd,&lsName,11);
 						remove_spaces(lsName);
-						if(strncmp(lsName,dirName,strLength)==0){
+						if(strncmp(lsName,dirName,strLength)==0){ //Checks to see if the entry name maches the entry we want.
 							foundFlag=1;
 							uint32_t DIR_FileSize=0;
 							uint32_t statClusterInfo=0;
@@ -255,7 +247,7 @@ int main(int argc, char *argv[])
 					read(fd,&stopByte,1);
 				}
 				
-			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));
+			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster)); //Look up the next cluster in the FAT.
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
 				if(nextCluster>=0xFFFFFF8 && foundFlag!=1){
@@ -269,12 +261,10 @@ int main(int argc, char *argv[])
 			int strLength=0;
 			char *dirName;
 			dirName=cmd_line+3;
-			while(strcmp(dirName+strLength,"\0")!=0){
+			while(strcmp(dirName+strLength,"\0")!=0){ //Parse the command to find the second argument.
 				strLength++;
 			}
 			strLength--;
-			//printf("%s\n",dirName);
-			//printf("%d",strLength);
 
 			int foundFlag=0;
 			uint8_t statByte=1;
@@ -288,14 +278,14 @@ int main(int argc, char *argv[])
 			char lsName[12] = {0};
 
 			
-			while(nextCluster<0xFFFFFF8){
+			while(nextCluster<0xFFFFFF8){//Keep going through the clusters untill we reach the end.
 
 
-				dirAddress= FirstSectorOfCluster(nextCluster)*512;
+				dirAddress= FirstSectorOfCluster(nextCluster)*512;  //Calculates the starting address.
 
 				lseek(fd, dirAddress, SEEK_SET);
 				read(fd,&stopByte,1);
-				while(stopByte!=0){
+				while(stopByte!=0){  //Checks to see of we have reached the end of the enteries.
 					lseek(fd, dirAddress+11, SEEK_SET);
 					read(fd,&statByte,1);
 					if(statByte==0x08){
@@ -303,18 +293,18 @@ int main(int argc, char *argv[])
 					}
 
 
-					else if(statByte==0x0F){
+					else if(statByte==0x0F){// The entry is a volume ID
 						dirAddress=dirAddress+32;
 					}
 
-					else if(statByte==0x10){
+					else if(statByte==0x10){//The entry is a directory.
 						uint32_t newCurrentCluster=0;
 						uint16_t tempLowClus=0;								
 						lseek(fd, dirAddress, SEEK_SET);
 						read(fd,&lsName,11);
 						remove_spaces(lsName);
 
-						if(strncmp(lsName,dirName,strLength)==0){
+						if(strncmp(lsName,dirName,strLength)==0){//Checks to see if the entry name maches the entry we want.
 							foundFlag=1;
 							lseek(fd, dirAddress+20, SEEK_SET);
 						    read(fd,&newCurrentCluster,2);
@@ -328,11 +318,11 @@ int main(int argc, char *argv[])
 						dirAddress=dirAddress+32;
 					}
 
-					else if(statByte==0x20){
+					else if(statByte==0x20){//The entry is a file
 						lseek(fd, dirAddress, SEEK_SET);
 						read(fd,&lsName,11);
 						remove_spaces(lsName);
-						if(strncmp(lsName,dirName,strLength)==0){
+						if(strncmp(lsName,dirName,strLength)==0){//Checks to see if the entry name maches the entry we want.
 							foundFlag=1;
 							printf("Error: not a directory\n");
 						}
@@ -344,7 +334,7 @@ int main(int argc, char *argv[])
 					read(fd,&stopByte,1);
 				}
 				//printf("the next cluster number is 0x%x\n",nextCluster);
-			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));
+			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));//Find the next cluster address in the FAT.
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
 				//printf("the next cluster number is 0x%x\n",nextCluster);
@@ -369,15 +359,14 @@ int main(int argc, char *argv[])
 			char lsName[12] = {0};
 
 			
-			while(nextCluster<0xFFFFFF8){//0xF8FF0F
+			while(nextCluster<0xFFFFFF8){//Loop while we have reached the last cluster.
 
 
-				dirAddress= FirstSectorOfCluster(nextCluster)*512;
-				//printf("the dirAddress number is 0x%x\n",dirAddress);
+				dirAddress= FirstSectorOfCluster(nextCluster)*512;//Calculate the starting address from the current cluster number.
 
 				lseek(fd, dirAddress, SEEK_SET);
 				read(fd,&stopByte,1);
-				while(stopByte!=0){
+				while(stopByte!=0){//Loop untill we reach the end of the enteries in directory cluster.
 					lseek(fd, dirAddress+11, SEEK_SET);
 					read(fd,&statByte,1);
 					if(statByte==0x08){
@@ -385,11 +374,11 @@ int main(int argc, char *argv[])
 					}
 
 
-					else if(statByte==0x0F){
+					else if(statByte==0x0F){//Entry is a volume ID
 						dirAddress=dirAddress+32;
 					}
 
-					else if(statByte==0x10){
+					else if(statByte==0x10){//Entery is a directory
 													
 						lseek(fd, dirAddress, SEEK_SET);
 						read(fd,&lsName,11);
@@ -399,7 +388,7 @@ int main(int argc, char *argv[])
 						dirAddress=dirAddress+32;
 					}
 
-					else if(statByte==0x20){
+					else if(statByte==0x20){//Entry is a file
 						
 						lseek(fd, dirAddress, SEEK_SET);
 						read(fd,&lsName,11);
@@ -413,19 +402,11 @@ int main(int argc, char *argv[])
 					read(fd,&stopByte,1);
 					
 				}
-				//uint16_t volumeName;
-				//PrintLs(fd,rootDirAddress);
-
-				//lseek(fd, startAddress, SEEK_SET);
-			    //read(fd,&volumeName,sizeof(enteryType));
-			    //printf("the next cluster number is 0x%x\n",nextCluster);
-			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));
-			    //printf("the next cluster FAT address is 0x%x\n",nextClusterFATaddress);
+				
+			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));//Calculate the address of the next cluster in the FAT
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
-				//----------------printf("the next cluster number is 0x%x\n",nextCluster);
-
-			    //nextCluster=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2));
+				
 			}
 		
 		}
@@ -564,8 +545,6 @@ void remove_spaces(char *name)
 			i++;
 		}
 	}
-	//printf("Name is %s\n", name);
-	//printf("newname is %s\n", newName);
-
+	
 	strcpy(name,newName);
 }

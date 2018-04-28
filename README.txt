@@ -15,11 +15,11 @@ Typing "volume" will print out the volume ID name.
 
 Typing "ls" will display a list of the directory contents.
 
-Typing "cd <dir name>" will take you into that directory, however we were not able to implement the ability to go up to the parent directory.
+Typing "cd <dir name>" will take you into that directory, however we were not able to implement the ability to go back up to the root directory.
 
 Typing "stat <dir/file name>" gives you info about that file/dir.
 
 Typing in "quit" will terminate the program.
 
 Challenges:
-Our biggest challenge was figuring out how to navigate to the FAT to find the next cluster number.  When we did figure it out we were running short on time.  We also were unable to navagate up to the parent directory using cd and were never able to implement the read command.
+Our biggest challenge was figuring out how to navigate to the FAT to find the next cluster number.  When we did figure it out, we were running short on time.  We also were unable to navagate back up to the root directory using cd and were never able to implement the read command.

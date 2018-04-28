@@ -169,9 +169,11 @@ int main(int argc, char *argv[])
 
 				lseek(fd, dirAddress, SEEK_SET);
 				read(fd,&stopByte,1);
+				stopByte =  le16toh(stopByte);
 				while(stopByte!=0){ //Checks to see of we have reached the end of the enteries.
 					lseek(fd, dirAddress+11, SEEK_SET);
 					read(fd,&statByte,1);
+					statByte =  le16toh(statByte);
 					if(statByte==0x08){
 						dirAddress=dirAddress+32;
 					}
@@ -195,10 +197,12 @@ int main(int argc, char *argv[])
 							printf("Attributes ATTR_DIRECTORY\n");
 							lseek(fd, dirAddress+28, SEEK_SET);
 						    read(fd,&DIR_FileSize,4);
+						    DIR_FileSize =  le32toh(DIR_FileSize);
 						    printf("Size is %i\n",DIR_FileSize);
 
 							lseek(fd, dirAddress+20, SEEK_SET);
 						    read(fd,&newCurrentCluster,2);
+
 						    newCurrentCluster=le32toh(newCurrentCluster);
 						    newCurrentCluster<<16;
 						    lseek(fd, dirAddress+26, SEEK_SET);
@@ -226,6 +230,7 @@ int main(int argc, char *argv[])
 
 							lseek(fd, dirAddress+28, SEEK_SET);
 							read(fd,&DIR_FileSize,4);
+							DIR_FileSize =  le32toh(DIR_FileSize);
 						    printf("Size is %i\n",DIR_FileSize);
 
 							lseek(fd, dirAddress+20, SEEK_SET);
@@ -245,11 +250,13 @@ int main(int argc, char *argv[])
 
 					lseek(fd, dirAddress, SEEK_SET);
 					read(fd,&stopByte,1);
+					stopByte =  le16toh(stopByte);
 				}
 				
 			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster)); //Look up the next cluster in the FAT.
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
+				nextCluster =  le32toh(nextCluster);
 				if(nextCluster>=0xFFFFFF8 && foundFlag!=1){
 					printf("Error: file/directory does not exist\n");
 				}   
@@ -288,6 +295,7 @@ int main(int argc, char *argv[])
 				while(stopByte!=0){  //Checks to see of we have reached the end of the enteries.
 					lseek(fd, dirAddress+11, SEEK_SET);
 					read(fd,&statByte,1);
+					statByte =  le16toh(statByte);
 					if(statByte==0x08){
 						dirAddress=dirAddress+32;
 					}
@@ -332,12 +340,13 @@ int main(int argc, char *argv[])
 
 					lseek(fd, dirAddress, SEEK_SET);
 					read(fd,&stopByte,1);
+					stopByte =  le16toh(stopByte);
 				}
-				//printf("the next cluster number is 0x%x\n",nextCluster);
+				
 			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));//Find the next cluster address in the FAT.
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
-				//printf("the next cluster number is 0x%x\n",nextCluster);
+				nextCluster =  le32toh(nextCluster);
 				if(nextCluster>=0xFFFFFF8 && foundFlag!=1){
 					printf("Error: does not exist\n");
 				}
@@ -369,6 +378,7 @@ int main(int argc, char *argv[])
 				while(stopByte!=0){//Loop untill we reach the end of the enteries in directory cluster.
 					lseek(fd, dirAddress+11, SEEK_SET);
 					read(fd,&statByte,1);
+					statByte =  le16toh(statByte);
 					if(statByte==0x08){
 						dirAddress=dirAddress+32;
 					}
@@ -400,19 +410,21 @@ int main(int argc, char *argv[])
 					
 					lseek(fd, dirAddress, SEEK_SET);
 					read(fd,&stopByte,1);
+					stopByte =  le16toh(stopByte);
 					
 				}
 				
 			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));//Calculate the address of the next cluster in the FAT
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
+				nextCluster =  le32toh(nextCluster);
 				
 			}
 		
 		}
 
 		else if(strncmp(cmd_line,"read",4)==0) {
-			printf("Going to read!\n");
+			printf("Not implemented :( \n");
 		}
 		
 		else if(strncmp(cmd_line,"quit",4)==0) {

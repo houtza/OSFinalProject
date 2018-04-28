@@ -31,6 +31,7 @@ uint32_t BPB_RootClus=0;
 uint32_t rootDirAddress=0; 
 uint32_t currentCluster=0;
 
+void remove_spaces(char *name); //Remove the spaces in a file/dir name
 uint32_t RootDirSectors();//Find the root directory sector
 uint32_t FirstDataSectors();//Find first data sectorsudo apt-get update
 uint32_t FirstSectorOfCluster();//Find the first sector of cluster
@@ -131,8 +132,8 @@ int main(int argc, char *argv[])
 
 		  //printf("BPB_RootClus is 0x%x, decimal: %i\n", BPB_RootClus, BPB_RootClus);
 
-		  FirstSectorOfCluster(94);
-		  printf("The FAT address is 0x%x",  ((ThisFATSecNum(94)*512)+ThisFATEntOffset(94)));
+		  //FirstSectorOfCluster(94);
+		  //printf("The FAT address is 0x%x",  ((ThisFATSecNum(94)*512)+ThisFATEntOffset(94)));
 		}
 
 		else if(strncmp(cmd_line,"volume",6)==0) {
@@ -147,16 +148,7 @@ int main(int argc, char *argv[])
  				printf("%c\n",volumeName );
 			}
 
-			//uint64_t volumeName=0;
-
-			//lseek(fd, rootDirAddress, SEEK_SET);
-		    //read(fd,&volumeName,11);
-		    //volumeName<<32;
-		    //lseek(fd, rootDirAddress+4, SEEK_SET);
-		    //read(fd,&volumeName,4);
-
-		    //printf("The volume address is 0x%x", volumeName);
-		    //printf("%x",volumeName );
+			
 		}
 		
 		else if(strncmp(cmd_line,"stat",4)==0) {
@@ -172,24 +164,22 @@ int main(int argc, char *argv[])
 				strLength++;
 			}
 			strLength--;
-			printf("%s\n",dirName);
-			printf("%d",strLength);
+			//printf("%s\n",dirName);
+			//printf("%d",strLength);
 
-			printf("Going to cd!\n");
-		}
 
-		else if(strncmp(cmd_line,"ls",2)==0) {
 			uint8_t statByte=1;
 			uint8_t stopByte=1;
-			uint8_t lsName=0;
 			int charCounter=0;
 			uint32_t dirAddress=0;
 
 			uint32_t nextCluster=currentCluster;
 			uint32_t nextClusterFATaddress=0;
 
+			char lsName[12] = {0};
+
 			
-			while(nextCluster<0xF8FF0F){
+			while(nextCluster<0xFFFFFF8){
 
 
 				dirAddress= FirstSectorOfCluster(nextCluster)*512;
@@ -209,62 +199,122 @@ int main(int argc, char *argv[])
 					}
 
 					else if(statByte==0x10){
-						while(charCounter!=11){
-							
-							lseek(fd, dirAddress+charCounter, SEEK_SET);
-							read(fd,&lsName,1);
+						uint32_t newCurrentCluster=0;
+						uint16_t tempLowClus=0;								
+						lseek(fd, dirAddress, SEEK_SET);
+						read(fd,&lsName,11);
+						remove_spaces(lsName);
 
-	 						charCounter++;
-	 						if(lsName!=0x20){
-	 							printf("%c",lsName);
-	 						}
-	 						
-						}
-						printf("\n");
-						charCounter=0;
+						if(strncmp(lsName,dirName,strLength)==0){
+							lseek(fd, dirAddress+20, SEEK_SET);
+						    read(fd,&newCurrentCluster,2);
+						    newCurrentCluster=le32toh(newCurrentCluster);
+						    newCurrentCluster<<16;
+						    lseek(fd, dirAddress+26, SEEK_SET);
+						    read(fd,&tempLowClus,2);
+						    tempLowClus=le16toh(tempLowClus);
+							currentCluster=newCurrentCluster|tempLowClus;
+						} 												
 						dirAddress=dirAddress+32;
 					}
 
 					else if(statByte==0x20){
-						while(charCounter!=11){
-							if(charCounter==8){
-								printf(".");
-							}
-							lseek(fd, dirAddress+charCounter, SEEK_SET);
-							read(fd,&lsName,1);
-
-	 						charCounter++;
-	 						if(lsName!=0x20){
-	 							printf("%c",lsName);
-	 						}
-	 						
+						lseek(fd, dirAddress, SEEK_SET);
+						read(fd,&lsName,11);
+						remove_spaces(lsName);
+						if(strncmp(lsName,dirName,strLength)==0){
+							printf("Error: not a directory\n");
 						}
-						printf("\n");
-						charCounter=0;
 						dirAddress=dirAddress+32;
 					}
 
 
-
-
 					lseek(fd, dirAddress, SEEK_SET);
 					read(fd,&stopByte,1);
+				}
+				printf("the next cluster number is 0x%x\n",nextCluster);
+			    nextClusterFATaddress=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2));
+			    lseek(fd, nextClusterFATaddress, SEEK_SET);
+				read(fd,&nextCluster,4);
+				printf("the next cluster number is 0x%x\n",nextCluster);
+				if(nextCluster>=0xFFFFFF8){
+					printf("Error: does not exist\n");
+				}
+
+			    
+			}
+			
+		}
+
+		else if(strncmp(cmd_line,"ls",2)==0) {
+			uint8_t statByte=1;
+			uint8_t stopByte=1;
+			int charCounter=0;
+			uint32_t dirAddress=0;
+
+			uint32_t nextCluster=currentCluster;
+			uint32_t nextClusterFATaddress=0;
+
+			char lsName[12] = {0};
+
+			
+			while(nextCluster<0xFFFFFF8){//0xF8FF0F
+
+
+				dirAddress= FirstSectorOfCluster(nextCluster)*512;
+
+				lseek(fd, dirAddress, SEEK_SET);
+				read(fd,&stopByte,1);
+				while(stopByte!=0){
+					lseek(fd, dirAddress+11, SEEK_SET);
+					read(fd,&statByte,1);
+					if(statByte==0x08){
+						dirAddress=dirAddress+32;
+					}
+
+
+					else if(statByte==0x0F){
+						dirAddress=dirAddress+32;
+					}
+
+					else if(statByte==0x10){
+													
+						lseek(fd, dirAddress, SEEK_SET);
+						read(fd,&lsName,11);
+						remove_spaces(lsName);
+						printf("%s\n",lsName);
+ 												
+						dirAddress=dirAddress+32;
+					}
+
+					else if(statByte==0x20){
+						
+						lseek(fd, dirAddress, SEEK_SET);
+						read(fd,&lsName,11);
+						remove_spaces(lsName);
+						printf("%s\n",lsName);
+						dirAddress=dirAddress+32;
+					}
+
+					
+					lseek(fd, dirAddress, SEEK_SET);
+					read(fd,&stopByte,1);
+					
 				}
 				//uint16_t volumeName;
 				//PrintLs(fd,rootDirAddress);
 
 				//lseek(fd, startAddress, SEEK_SET);
 			    //read(fd,&volumeName,sizeof(enteryType));
+			    printf("the next cluster number is 0x%x\n",nextCluster);
 			    nextClusterFATaddress=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2));
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
+				printf("the next cluster number is 0x%x\n",nextCluster);
 
 			    //nextCluster=((ThisFATSecNum(2)*512)+ThisFATEntOffset(2));
 			}
-
-
-
-			printf("Going to ls.\n");
+		
 		}
 
 		else if(strncmp(cmd_line,"read",4)==0) {
@@ -358,7 +408,7 @@ void CalcRootDir(){
 //Calculates the first sector of cluster and then multpliess it by 512 to print out the starting address of the root directory. 
 uint32_t FirstSectorOfCluster(uint32_t n){
   uint32_t firstSectorOfCluster=(( n-2)* BPB_SecPerClus) +FirstDataSector();
-  printf("The address is 0x%x, decimal: %i\n",  firstSectorOfCluster*512,  firstSectorOfCluster*512);
+  //printf("The address is 0x%x, decimal: %i\n",  firstSectorOfCluster*512,  firstSectorOfCluster*512);
   return firstSectorOfCluster;
 }
 
@@ -371,3 +421,35 @@ uint32_t ThisFATEntOffset(uint32_t N){
 	return ((N*4)% BPB_BytesPerSec);
 }
 
+
+void remove_spaces(char *name)
+{
+	char newName[12] = {0};
+
+	int i;
+	int j;
+
+	for (i=0;i<8;i++) {
+		if(name[i] != 0x20) {
+			newName[i]=name[i];
+		}
+		else {
+			break;
+		}
+
+	}
+
+	/* i is where we need to start writing */
+	if(name[8] != 0x20){
+		newName[i] = '.';
+		i++;
+		for (j=8; j<11; j++){
+			newName[i] = name[j];
+			i++;
+		}
+	}
+	//printf("Name is %s\n", name);
+	//printf("newname is %s\n", newName);
+
+	strcpy(name,newName);
+}

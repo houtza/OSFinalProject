@@ -146,13 +146,122 @@ int main(int argc, char *argv[])
 
  				volumeCounter++;
  				printf("%c\n",volumeName );
-			}
-
-			
+			}			
 		}
 		
 		else if(strncmp(cmd_line,"stat",4)==0) {
-			printf("Going to stat!\n");
+			int strLength=0;
+			char *dirName;
+			dirName=cmd_line+5;  //set the pointer to the second perameter.
+			while(strcmp(dirName+strLength,"\0")!=0){
+				strLength++;
+			}
+			strLength--;
+			
+			int foundFlag=0;
+			uint8_t statByte=1;
+			uint8_t stopByte=1;
+			int charCounter=0;
+			uint32_t dirAddress=0;
+
+			uint32_t nextCluster=currentCluster;
+			uint32_t nextClusterFATaddress=0;
+
+			char lsName[12] = {0};
+
+			
+			while(nextCluster<0xFFFFFF8){
+
+			
+				dirAddress= FirstSectorOfCluster(nextCluster)*512;
+
+				lseek(fd, dirAddress, SEEK_SET);
+				read(fd,&stopByte,1);
+				while(stopByte!=0){
+					lseek(fd, dirAddress+11, SEEK_SET);
+					read(fd,&statByte,1);
+					if(statByte==0x08){
+						dirAddress=dirAddress+32;
+					}
+
+
+					else if(statByte==0x0F){
+						dirAddress=dirAddress+32;
+					}
+
+					else if(statByte==0x10){
+						uint32_t newCurrentCluster=0;
+						uint16_t tempLowClus=0;								
+						lseek(fd, dirAddress, SEEK_SET);
+						read(fd,&lsName,11);
+						remove_spaces(lsName);
+
+						if(strncmp(lsName,dirName,strLength)==0){
+							foundFlag=1;
+							uint32_t DIR_FileSize=0;
+							uint32_t statClusterInfo=0;
+							printf("Attributes ATTR_DIRECTORY\n");
+							lseek(fd, dirAddress+28, SEEK_SET);
+						    read(fd,&DIR_FileSize,4);
+						    printf("Size is %i\n",DIR_FileSize);
+
+							lseek(fd, dirAddress+20, SEEK_SET);
+						    read(fd,&newCurrentCluster,2);
+						    newCurrentCluster=le32toh(newCurrentCluster);
+						    newCurrentCluster<<16;
+						    lseek(fd, dirAddress+26, SEEK_SET);
+						    read(fd,&tempLowClus,2);
+						    tempLowClus=le16toh(tempLowClus);
+						    statClusterInfo=newCurrentCluster|tempLowClus;
+							printf("Next Cluster nuber is 0x%x\n",statClusterInfo);
+						} 												
+						dirAddress=dirAddress+32;
+					}
+
+					else if(statByte==0x20){
+						uint32_t newCurrentCluster=0;
+						uint16_t tempLowClus=0;	
+						
+											
+						lseek(fd, dirAddress, SEEK_SET);
+						read(fd,&lsName,11);
+						remove_spaces(lsName);
+						if(strncmp(lsName,dirName,strLength)==0){
+							foundFlag=1;
+							uint32_t DIR_FileSize=0;
+							uint32_t statClusterInfo=0;
+							printf("Attributes ATTR_ARCHIVE\n");
+
+							lseek(fd, dirAddress+28, SEEK_SET);
+							read(fd,&DIR_FileSize,4);
+						    printf("Size is %i\n",DIR_FileSize);
+
+							lseek(fd, dirAddress+20, SEEK_SET);
+						    read(fd,&newCurrentCluster,2);
+						    newCurrentCluster=le32toh(newCurrentCluster);
+						    newCurrentCluster<<16;
+						    lseek(fd, dirAddress+26, SEEK_SET);
+						    read(fd,&tempLowClus,2);
+						    tempLowClus=le16toh(tempLowClus);
+							statClusterInfo=newCurrentCluster|tempLowClus;
+							printf("Next Cluster nuber is 0x%x\n",statClusterInfo);
+							
+						}
+						dirAddress=dirAddress+32;
+					}
+
+
+					lseek(fd, dirAddress, SEEK_SET);
+					read(fd,&stopByte,1);
+				}
+				
+			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));
+			    lseek(fd, nextClusterFATaddress, SEEK_SET);
+				read(fd,&nextCluster,4);
+				if(nextCluster>=0xFFFFFF8 && foundFlag!=1){
+					printf("Error: file/directory does not exist\n");
+				}   
+			}
 		}
 
 		else if(strncmp(cmd_line,"cd",2)==0) {
@@ -234,7 +343,7 @@ int main(int argc, char *argv[])
 					lseek(fd, dirAddress, SEEK_SET);
 					read(fd,&stopByte,1);
 				}
-				printf("the next cluster number is 0x%x\n",nextCluster);
+				//printf("the next cluster number is 0x%x\n",nextCluster);
 			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
@@ -264,7 +373,7 @@ int main(int argc, char *argv[])
 
 
 				dirAddress= FirstSectorOfCluster(nextCluster)*512;
-				printf("the dirAddress number is 0x%x\n",dirAddress);
+				//printf("the dirAddress number is 0x%x\n",dirAddress);
 
 				lseek(fd, dirAddress, SEEK_SET);
 				read(fd,&stopByte,1);
@@ -309,9 +418,9 @@ int main(int argc, char *argv[])
 
 				//lseek(fd, startAddress, SEEK_SET);
 			    //read(fd,&volumeName,sizeof(enteryType));
-			    printf("the next cluster number is 0x%x\n",nextCluster);
+			    //printf("the next cluster number is 0x%x\n",nextCluster);
 			    nextClusterFATaddress=((ThisFATSecNum(nextCluster)*512)+ThisFATEntOffset(nextCluster));
-			    printf("the next cluster FAT address is 0x%x\n",nextClusterFATaddress);
+			    //printf("the next cluster FAT address is 0x%x\n",nextClusterFATaddress);
 			    lseek(fd, nextClusterFATaddress, SEEK_SET);
 				read(fd,&nextCluster,4);
 				//----------------printf("the next cluster number is 0x%x\n",nextCluster);
@@ -417,15 +526,18 @@ uint32_t FirstSectorOfCluster(uint32_t n){
 }
 
 
+//Calculates and returns ThisFATSecNum.
 uint32_t ThisFATSecNum(uint32_t N){
 	return (BPB_RsvdsSecCnt + ((N*4)/BPB_BytesPerSec));
 }
 
+//Calculates and returns ThisFATEntOffset.
 uint32_t ThisFATEntOffset(uint32_t N){
 	return ((N*4)% BPB_BytesPerSec);
 }
 
 
+//Removes the spaces from the file names
 void remove_spaces(char *name)
 {
 	char newName[12] = {0};
